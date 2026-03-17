@@ -2,27 +2,47 @@ import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RiskHeatmap } from '@/components/RiskHeatmap';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, MapPin, Search, ChevronRight, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { api } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 export function BookingPage() {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     pickup: '',
     destination: '',
-    type: 'escort'
+    type: 'escort',
+    riskScore: Math.floor(Math.random() * 40) + 30 // 30-70 range
   });
   const nextStep = () => setStep(s => s + 1);
-  const handleFinalize = () => {
-    toast.success('Mission Briefing Transmitted', {
-      description: 'Your deployment request has been logged and a guard is being assigned.'
-    });
-    setTimeout(() => navigate('/dashboard'), 1500);
+  const handleFinalize = async () => {
+    setIsSubmitting(true);
+    try {
+      await api('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: 'u1', // Mock current user
+          serviceType: formData.type,
+          pickupLocation: formData.pickup,
+          destination: formData.destination,
+          riskScore: formData.riskScore,
+        })
+      });
+      toast.success('Mission Briefing Transmitted', {
+        description: 'Your deployment request has been logged and a guard is being assigned.'
+      });
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch (error) {
+      toast.error('Transmission Failed', { description: 'Could not connect to command center.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   return (
     <AppLayout container>
@@ -65,8 +85,8 @@ export function BookingPage() {
                       <Label className="text-slate-400 text-xs uppercase tracking-widest font-bold">Extraction Point</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                        <Input 
-                          placeholder="Address, Landmark, or Coordinates" 
+                        <Input
+                          placeholder="Address, Landmark, or Coordinates"
                           className="bg-white/5 border-white/10 pl-10 h-12"
                           value={formData.pickup}
                           onChange={e => setFormData({ ...formData, pickup: e.target.value })}
@@ -77,8 +97,8 @@ export function BookingPage() {
                       <Label className="text-slate-400 text-xs uppercase tracking-widest font-bold">Target Destination</Label>
                       <div className="relative">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                        <Input 
-                          placeholder="Final Secure Location" 
+                        <Input
+                          placeholder="Final Secure Location"
                           className="bg-white/5 border-white/10 pl-10 h-12"
                           value={formData.destination}
                           onChange={e => setFormData({ ...formData, destination: e.target.value })}
@@ -89,7 +109,7 @@ export function BookingPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {['escort', 'executive', 'event'].map((type) => (
-                    <div 
+                    <div
                       key={type}
                       onClick={() => setFormData({ ...formData, type })}
                       className={cn(
@@ -108,7 +128,12 @@ export function BookingPage() {
                   ))}
                 </div>
               </div>
-              <Button size="lg" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold" onClick={nextStep}>
+              <Button 
+                size="lg" 
+                className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold" 
+                onClick={nextStep}
+                disabled={!formData.pickup || !formData.destination}
+              >
                 Generate Intelligence Profile <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </motion.div>
@@ -125,17 +150,16 @@ export function BookingPage() {
                 <div>
                   <h2 className="text-3xl font-black text-white tracking-tight mb-4">RMP INTELLIGENCE</h2>
                   <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    Our Risk Mitigation & Prevention engine has processed your route. 
-                    Visualizing threat heatmaps and identifying safe-points along the extraction path.
+                    Route optimization complete. Anomaly detection active for the path between {formData.pickup} and {formData.destination}.
                   </p>
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                      <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-1">Alert: High Footfall Area</p>
-                      <p className="text-[10px] text-slate-400">Increased surveillance recommended at 4.2km mark.</p>
+                      <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-1">Risk Score: {formData.riskScore}%</p>
+                      <p className="text-[10px] text-slate-400">Moderate threat level detected in transit sectors.</p>
                     </div>
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                       <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Safe Point identified</p>
-                      <p className="text-[10px] text-slate-400">Police Precinct 4 is 3 minutes from target route.</p>
+                      <p className="text-[10px] text-slate-400">Sentinel Hub 7 is located mid-route for tactical support.</p>
                     </div>
                   </div>
                 </div>
@@ -162,23 +186,27 @@ export function BookingPage() {
                 <div className="bg-white/5 rounded-3xl p-6 border border-white/5 space-y-4 text-left">
                   <div className="flex justify-between border-b border-white/5 pb-2">
                     <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Asset Category</span>
-                    <span className="text-white font-bold">Elite Tier Specialist</span>
+                    <span className="text-white font-bold">{formData.type === 'executive' ? 'Elite Tier' : 'Standard Tier'}</span>
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-2">
                     <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Est. Risk Score</span>
-                    <span className="text-amber-500 font-bold">65/100</span>
+                    <span className="text-amber-500 font-bold">{formData.riskScore}/100</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Priority Code</span>
                     <span className="text-emerald-500 font-bold">ALFA-X</span>
                   </div>
                 </div>
-                <Button size="lg" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black h-14 text-lg rounded-2xl" onClick={handleFinalize}>
-                  CONFIRM & DEPLOY
+                <Button 
+                  size="lg" 
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black h-14 text-lg rounded-2xl" 
+                  onClick={handleFinalize}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'TRANSMITTING...' : 'CONFIRM & DEPLOY'}
                 </Button>
                 <p className="text-[10px] text-slate-500 font-medium italic">
-                  By clicking confirm, you authorize the engagement of professional security services. 
-                  Location tracking will begin immediately upon acceptance.
+                  Encryption active. Mission parameters will be wiped after 48 hours of completion.
                 </p>
               </div>
             </motion.div>

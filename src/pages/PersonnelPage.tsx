@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { api } from '@/lib/api-client';
@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Star, Shield, Award, MapPin } from 'lucide-react';
+import { GuardDetailModal } from '@/components/GuardDetailModal';
 export function PersonnelPage() {
+  const [selectedGuard, setSelectedGuard] = useState<GuardProfile | null>(null);
   const { data: guards, isLoading } = useQuery<{ items: GuardProfile[] }>({
     queryKey: ['guards'],
     queryFn: () => api('/api/guards')
@@ -20,8 +22,7 @@ export function PersonnelPage() {
           <div>
             <h2 className="text-4xl font-black tracking-tight text-white uppercase">Operational Assets</h2>
             <p className="text-slate-400 text-sm mt-2 max-w-lg">
-              Every Sentinel professional is vetted through a multi-stage background check, 
-              physical testing, and tactical proficiency evaluation.
+              Elite professionals vetted for high-stakes environments. View dossiers for tactical history and certification details.
             </p>
           </div>
           <div className="flex gap-4">
@@ -82,8 +83,11 @@ export function PersonnelPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="p-6 pt-0">
-                  <Button className="w-full bg-white/5 border border-white/10 hover:bg-amber-500 hover:text-slate-950 font-bold transition-all rounded-xl">
-                    Request Placement
+                  <Button 
+                    onClick={() => setSelectedGuard(guard)}
+                    className="w-full bg-white/5 border border-white/10 hover:bg-amber-500 hover:text-slate-950 font-bold transition-all rounded-xl"
+                  >
+                    Open Dossier
                   </Button>
                 </CardFooter>
               </Card>
@@ -91,6 +95,11 @@ export function PersonnelPage() {
           )}
         </div>
       </div>
+      <GuardDetailModal 
+        guard={selectedGuard} 
+        isOpen={!!selectedGuard} 
+        onClose={() => setSelectedGuard(null)} 
+      />
     </AppLayout>
   );
 }
