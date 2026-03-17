@@ -45,6 +45,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await job.exists()) return notFound(c, 'Job not found');
     return ok(c, await job.setStatus(status));
   });
+  app.patch('/api/jobs/:id/location', async (c) => {
+    const { lat, lng } = await c.req.json() as { lat: number, lng: number };
+    const job = new JobEntity(c.env, c.req.param('id'));
+    if (!await job.exists()) return notFound(c, 'Job not found');
+    return ok(c, await job.updateLocation(lat, lng));
+  });
+  app.post('/api/jobs/:id/assign', async (c) => {
+    const { guardId } = await c.req.json() as { guardId: string };
+    const job = new JobEntity(c.env, c.req.param('id'));
+    if (!await job.exists()) return notFound(c, 'Job not found');
+    await job.patch({ guardId, updatedAt: Date.now() });
+    return ok(c, await job.getState());
+  });
   app.post('/api/jobs/:id/panic', async (c) => {
     const jobId = c.req.param('id');
     const job = new JobEntity(c.env, jobId);

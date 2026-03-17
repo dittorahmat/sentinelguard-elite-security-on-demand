@@ -7,6 +7,10 @@ export type UserRole = 'client' | 'guard' | 'admin';
 export type GuardTier = 'standard' | 'elite';
 export type JobStatus = 'pending' | 'active' | 'emergency' | 'completed' | 'cancelled';
 export type ServiceType = 'escort' | 'executive' | 'event';
+export type Location = {
+  lat: number;
+  lng: number;
+};
 export interface User {
   id: string;
   name: string;
@@ -20,7 +24,7 @@ export interface GuardProfile extends User {
   rating: number;
   bio: string;
   experienceYears: number;
-  location?: { lat: number; lng: number };
+  location?: Location;
 }
 export interface Job {
   id: string;
@@ -33,7 +37,7 @@ export interface Job {
   riskScore: number;
   createdAt: number;
   updatedAt: number;
-  currentLocation?: { lat: number; lng: number };
+  currentLocation?: Location;
 }
 export interface IncidentLog {
   id: string;
@@ -47,4 +51,15 @@ export interface RiskAssessment {
   score: number;
   threats: string[];
   recommendedTier: GuardTier;
+}
+export interface Chat {
+  id: string;
+  title: string;
+}
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  userId: string;
+  text: string;
+  ts: number;
 }
