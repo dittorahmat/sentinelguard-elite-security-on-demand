@@ -1,6 +1,6 @@
 # Cloudflare Workers React Starter Template
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dittorahmat/sentinelguard-elite-security-on-demand)
 
 A production-ready full-stack starter template for Cloudflare Workers with a modern React frontend. Built with Durable Objects for scalable, stateful data storage (Users, Chats, Messages), Hono for API routing, and shadcn/ui for beautiful, accessible UI components.
 
@@ -106,7 +106,7 @@ This builds the frontend assets, bundles the Worker, and deploys via Wrangler.
 
 **Environment Variables**: Add via Wrangler dashboard or `wrangler.toml`.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dittorahmat/sentinelguard-elite-security-on-demand)
 
 ## 🏗 Architecture Overview
 ```
