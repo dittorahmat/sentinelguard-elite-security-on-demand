@@ -2,24 +2,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PanicButton } from '@/components/PanicButton';
+import { SOPOverlay } from '@/components/SOPOverlay';
 import { api } from '@/lib/api-client';
 import type { Job, GuardProfile } from '@shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MapPin, Shield, Clock, AlertTriangle, Play } from 'lucide-react';
+import { MapPin, Shield, Clock, AlertTriangle, Play, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [simLocation, setSimLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showSOP, setShowSOP] = useState(false);
+  const [showDiversion, setShowDiversion] = useState(false);
   const lastSyncTimeRef = useRef<number>(0);
   const SYNC_THRESHOLD_MS = 5000;
   const { data: jobs, isLoading } = useQuery<{ items: Job[] }>({
     queryKey: ['jobs'],
     queryFn: () => api('/api/jobs'),
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
   const activeJob = jobs?.items?.find(j => j.status === 'active' || j.status === 'emergency');
   const pendingJob = jobs?.items?.find(j => j.status === 'pending');
@@ -44,41 +47,46 @@ export function DashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       toast.error('EMERGENCY SIGNAL SENT', { description: 'Tactical units dispatched.' });
+      setShowSOP(true);
     }
   });
-  // Simulation Engine: Updates local state every 3 seconds
+  // Simulation Engine
   useEffect(() => {
     if (activeJob?.id && activeJob?.status === 'active') {
-      const initialLocation = activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
       const interval = setInterval(() => {
         setSimLocation(prev => {
-          const base = prev || initialLocation;
+          const base = prev || activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
           return {
             lat: base.lat + (Math.random() - 0.5) * 0.0005,
             lng: base.lng + (Math.random() - 0.5) * 0.0005,
           };
         });
+        // Occasional route diversion simulation
+        if (Math.random() > 0.95) {
+          setShowDiversion(true);
+          setTimeout(() => setShowDiversion(false), 5000);
+        }
       }, 3000);
       return () => clearInterval(interval);
     } else {
       setSimLocation(null);
     }
   }, [activeJob?.id, activeJob?.status]);
-  // Throttled Backend Sync: Syncs simulated location to worker at low frequency
+  // Throttled Backend Sync
   useEffect(() => {
     if (!activeJob?.id || activeJob.status !== 'active' || !simLocation) return;
     const now = Date.now();
     if (now - lastSyncTimeRef.current > SYNC_THRESHOLD_MS) {
       lastSyncTimeRef.current = now;
-      // Fire and forget sync to avoid blocking UI or causing refetch loops
       api(`/api/jobs/${activeJob.id}/location`, {
         method: 'PATCH',
         body: JSON.stringify({ lat: simLocation.lat, lng: simLocation.lng })
-      }).catch(err => {
-        console.warn('Location sync failed:', err);
-      });
+      }).catch(console.warn);
     }
   }, [simLocation, activeJob?.id, activeJob?.status]);
+  useEffect(() => {
+    if (activeJob?.status === 'emergency') setShowSOP(true);
+  }, [activeJob?.status]);
   if (isLoading) {
     return (
       <AppLayout container>
@@ -92,11 +100,17 @@ export function DashboardPage() {
   }
   return (
     <AppLayout container>
+      {showSOP && <SOPOverlay onAcknowledge={() => setShowSOP(false)} />}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {activeJob ? (
             <>
               <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-white/10 p-8">
+                {showDiversion && (
+                  <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-950 py-1 text-center font-black text-[10px] uppercase tracking-[0.3em] z-10 animate-pulse">
+                    <Zap className="inline-block h-3 w-3 mr-2" /> RMP: Dynamic Route Diversion Recommended
+                  </div>
+                )}
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="text-2xl font-black tracking-tight text-white uppercase">Live Deployment</h2>
@@ -134,7 +148,7 @@ export function DashboardPage() {
                       Duress Protocol
                     </h3>
                     <p className="text-slate-400 text-xs leading-relaxed">
-                      This signal is monitored by high-tier response centers. Do not activate unless in immediate physical danger.
+                      High-tier response escalation. Hold to activate silent duress signal and deployment of local tactical units.
                     </p>
                   </div>
                 </div>
