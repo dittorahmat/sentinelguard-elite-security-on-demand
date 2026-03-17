@@ -108,10 +108,25 @@ export default ({ mode }: { mode: string }) => {
     plugins: [react(), cloudflare(), watchDependenciesPlugin(), reloadTriggerPlugin()],
     build: {
       minify: true,
-      sourcemap: "inline", // Use inline source maps for better error reporting
+      sourcemap: "inline",
       rollupOptions: {
         output: {
-          sourcemapExcludeSources: false, // Include original source in source maps
+          sourcemapExcludeSources: false,
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              // Only extract the largest dependencies into separate chunks
+              if (id.includes('recharts')) return 'charts-vendor';
+              if (id.includes('framer-motion')) return 'animation-vendor';
+              if (id.includes('@radix-ui')) return 'ui-vendor';
+              if (id.includes('lucide-react')) return 'icons';
+              if (id.includes('/react/') && !id.includes('react-dom') && !id.includes('react-router')) return 'react-vendor';
+              if (id.includes('@tanstack/react-query')) return 'query-vendor';
+              if (id.includes('zustand')) return 'state-vendor';
+              if (id.includes('react-router')) return 'router-vendor';
+              // Everything else bundled together (including react-dom)
+              return 'vendor';
+            }
+          },
         },
       },
     },
