@@ -78,7 +78,8 @@ function updateWranglerJsonc() {
 
 function runSetupCommands() {
     const commands = [
-    "bun add lucide-react framer-motion clsx tailwind-merge recharts date-fns sonner"
+    "bun add lucide-react framer-motion clsx tailwind-merge recharts date-fns sonner",
+    "bun add recharts@2.15.4"
 ];
     
     if (commands.length === 0) {
