@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { IncidentDetailModal } from '@/components/IncidentDetailModal';
@@ -21,7 +21,14 @@ export function CommandCenterPage() {
     queryFn: () => api('/api/incidents'),
     refetchInterval: 5000
   });
-  const emergencyJobs = jobs?.items?.filter(j => j.status === 'emergency') || [];
+  const sortedIncidents = useMemo(() => {
+    if (!incidents?.items) return [];
+    return [...incidents.items].sort((a, b) => b.timestamp - a.timestamp);
+  }, [incidents?.items]);
+  const emergencyJobs = useMemo(() => 
+    jobs?.items?.filter(j => j.status === 'emergency') || [],
+    [jobs?.items]
+  );
   const activeDeployments = jobs?.items?.filter(j => j.status === 'active').length || 0;
   return (
     <AppLayout container>
@@ -44,7 +51,7 @@ export function CommandCenterPage() {
             </Card>
           ))}
         </div>
-        {emergencyJobs.length > 0 && (
+        {emergencyJobs.length > 0 ? (
           <div className="bg-red-500/10 border-2 border-red-500 rounded-3xl p-6 animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.3)]">
             <div className="flex items-center gap-4 mb-6">
               <div className="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
@@ -52,20 +59,25 @@ export function CommandCenterPage() {
               </div>
               <div>
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">Emergency Escalation Active</h3>
-                <p className="text-red-500/80 text-xs font-bold uppercase tracking-widest">Immediate Tactical Response Required</p>
+                <p className="text-red-100/80 text-xs font-bold uppercase tracking-widest">Immediate Tactical Response Required</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {emergencyJobs.map(job => (
-                <div key={job.id} className="bg-slate-900 p-4 rounded-xl border border-red-500/30 flex justify-between items-center group hover:border-red-500/60 transition-colors">
+                <div key={job.id} className="bg-slate-950 p-4 rounded-xl border border-red-500/30 flex justify-between items-center group hover:border-red-500/60 transition-colors">
                   <div>
                     <p className="text-white font-bold">JOB ID: {job.id.slice(0, 8)}</p>
-                    <p className="text-slate-400 text-xs">{job.pickupLocation} → {job.destination}</p>
+                    <p className="text-slate-400 text-xs truncate max-w-[200px]">{job.pickupLocation || 'Unknown'} → {job.destination || 'Unknown'}</p>
                   </div>
                   <Badge className="bg-red-500 text-white font-black px-4">PANIC SIGNAL</Badge>
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs gap-3">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            Zero Emergency Alerts - Area Secure
           </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -87,23 +99,30 @@ export function CommandCenterPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobs?.items?.map(job => (
-                    <TableRow key={job.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                      <TableCell className="font-mono text-[10px] text-amber-500">{job.id.slice(0, 8)}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-slate-300 text-xs">{job.destination}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn(
-                          "text-[9px] uppercase tracking-widest font-black",
-                          job.status === 'active' && "text-emerald-500 border-emerald-500/20",
-                          job.status === 'emergency' && "text-red-500 border-red-500/20",
-                          job.status === 'pending' && "text-slate-500 border-white/10"
-                        )}>
-                          {job.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-black text-slate-300">{job.riskScore}%</TableCell>
+                  {jobs?.items?.length ? (
+                    jobs.items.map(job => (
+                      <TableRow key={job.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                        <TableCell className="font-mono text-[10px] text-amber-500">{job.id.slice(0, 8)}</TableCell>
+                        <TableCell className="max-w-[180px] truncate text-slate-300 text-xs">{job.destination || 'Unassigned'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] uppercase tracking-widest font-black",
+                            job.status === 'active' && "text-emerald-500 border-emerald-500/20",
+                            job.status === 'emergency' && "text-red-500 border-red-500/20",
+                            job.status === 'pending' && "text-slate-500 border-white/10",
+                            job.status === 'completed' && "text-blue-500 border-blue-500/20"
+                          )}>
+                            {job.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-black text-slate-300">{job.riskScore || 0}%</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center text-slate-600 text-xs italic">No deployments found.</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -116,13 +135,13 @@ export function CommandCenterPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-white/5">
-                {incidents?.items?.length === 0 ? (
+              <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+                {sortedIncidents.length === 0 ? (
                   <div className="p-8 text-center text-slate-600 text-xs italic">No critical incidents recorded.</div>
                 ) : (
-                  incidents?.items?.map(incident => (
-                    <div 
-                      key={incident.id} 
+                  sortedIncidents.map(incident => (
+                    <div
+                      key={incident.id}
                       className="p-4 space-y-2 hover:bg-white/5 cursor-pointer transition-colors"
                       onClick={() => setSelectedIncident(incident)}
                     >
@@ -143,10 +162,10 @@ export function CommandCenterPage() {
           </Card>
         </div>
       </div>
-      <IncidentDetailModal 
-        incident={selectedIncident} 
-        isOpen={!!selectedIncident} 
-        onClose={() => setSelectedIncident(null)} 
+      <IncidentDetailModal
+        incident={selectedIncident}
+        isOpen={!!selectedIncident}
+        onClose={() => setSelectedIncident(null)}
       />
     </AppLayout>
   );

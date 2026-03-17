@@ -12,21 +12,21 @@ export function AppLayout({ children, container = false }: AppLayoutProps): JSX.
   const location = useLocation();
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden">
-        <Sidebar className="border-r border-white/10 bg-slate-900/50 backdrop-blur-xl">
-          <SidebarHeader className="border-b border-white/10 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+      <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
+        <Sidebar className="border-r border-white/10 bg-slate-900/60 backdrop-blur-2xl">
+          <SidebarHeader className="border-b border-white/10 p-6">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] group-hover:scale-110 transition-transform">
                 <Shield className="h-6 w-6 text-slate-950" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-tight text-white">SENTINEL</span>
-                <span className="text-[10px] font-medium tracking-[0.2em] text-amber-500/80">GUARD</span>
+                <span className="text-sm font-black tracking-tight text-white uppercase">SENTINEL</span>
+                <span className="text-[10px] font-black tracking-[0.2em] text-amber-500/80 uppercase">GUARD</span>
               </div>
-            </div>
+            </Link>
           </SidebarHeader>
-          <SidebarContent className="p-4">
-            <SidebarMenu className="space-y-2">
+          <SidebarContent className="p-4 py-8">
+            <SidebarMenu className="space-y-1.5">
               {[
                 { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
                 { name: "Book Escort", icon: Radar, path: "/book" },
@@ -38,43 +38,45 @@ export function AppLayout({ children, container = false }: AppLayoutProps): JSX.
                     asChild
                     isActive={location.pathname === item.path}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all",
-                      location.pathname === item.path 
-                        ? "bg-amber-500/10 text-amber-500" 
-                        : "text-slate-400 hover:bg-white/5 hover:text-white"
+                      "group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300",
+                      location.pathname === item.path
+                        ? "bg-amber-500/15 text-amber-500 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)]"
+                        : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                     )}
                   >
                     <Link to={item.path}>
-                      <item.icon className={cn("h-5 w-5", location.pathname === item.path ? "text-amber-500" : "group-hover:text-white")} />
-                      <span className="font-medium">{item.name}</span>
+                      <item.icon className={cn("h-5 w-5", location.pathname === item.path ? "text-amber-500" : "group-hover:text-amber-500/70 transition-colors")} />
+                      <span className="font-black text-xs uppercase tracking-wider">{item.name}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarContent>
-          <div className="mt-auto p-4 border-t border-white/10">
-            <SidebarMenuButton className="w-full justify-start text-slate-400 hover:text-white">
-              <LifeBuoy className="mr-2 h-4 w-4" />
-              <span>Support</span>
+          <div className="mt-auto p-6 border-t border-white/10">
+            <SidebarMenuButton className="w-full justify-start text-slate-500 hover:text-white transition-colors">
+              <LifeBuoy className="mr-3 h-4 w-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Tactical Support</span>
             </SidebarMenuButton>
           </div>
         </Sidebar>
         <SidebarInset className="flex-1 flex flex-col bg-slate-950 relative overflow-y-auto">
-          <header className="flex h-16 items-center justify-between border-b border-white/5 px-6 sticky top-0 bg-slate-950/80 backdrop-blur-md z-30">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-slate-400 hover:text-white" />
-              <h1 className="text-sm font-semibold text-slate-200">
+          <header className="flex h-20 items-center justify-between border-b border-white/5 px-8 sticky top-0 bg-slate-950/80 backdrop-blur-md z-40">
+            <div className="flex items-center gap-6">
+              <SidebarTrigger className="text-slate-500 hover:text-white transition-colors" />
+              <div className="h-4 w-[1px] bg-white/10 hidden md:block" />
+              <h1 className="text-xs font-black uppercase tracking-[0.2em] text-slate-300">
                 {location.pathname === "/dashboard" && "Mission Briefing"}
                 {location.pathname === "/book" && "Strategic Deployment"}
                 {location.pathname === "/personnel" && "Operational Assets"}
                 {location.pathname === "/command-center" && "Tactical Overview"}
+                {location.pathname === "/" && "Portal Overview"}
               </h1>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">System Live</span>
+            <div className="flex items-center gap-6">
+              <div className="hidden sm:flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/20">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" />
+                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.1em]">GRID SECURE</span>
               </div>
               <ThemeToggle className="static" />
             </div>
