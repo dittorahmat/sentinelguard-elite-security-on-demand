@@ -108,7 +108,7 @@ export default ({ mode }: { mode: string }) => {
     plugins: [react(), cloudflare(), watchDependenciesPlugin(), reloadTriggerPlugin()],
     build: {
       minify: true,
-      sourcemap: "inline",
+      sourcemap: false,
       rollupOptions: {
         output: {
           sourcemapExcludeSources: false,
