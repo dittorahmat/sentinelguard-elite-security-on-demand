@@ -1,144 +1,60 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PanicButton } from '@/components/PanicButton';
-import { SOPOverlay } from '@/components/SOPOverlay';
 import { api } from '@/lib/api-client';
 import type { Job, GuardProfile } from '@shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { MapPin, Shield, Clock, AlertTriangle, Play, Zap } from 'lucide-react';
+import { MapPin, Shield, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 export function DashboardPage() {
   const queryClient = useQueryClient();
-  const [simLocation, setSimLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showSOP, setShowSOP] = useState(false);
-  const [showDiversion, setShowDiversion] = useState(false);
-  const lastSyncTimeRef = useRef<number>(0);
-  const lastKnownJobIdRef = useRef<string | null>(null);
-  const SYNC_THRESHOLD_MS = 10000; // Increased to 10s for stability
   const { data: jobs, isLoading } = useQuery<{ items: Job[] }>({
     queryKey: ['jobs'],
-    queryFn: () => api('/api/jobs'),
-    refetchInterval: 5000,
+    queryFn: () => api('/api/jobs')
   });
   const activeJob = jobs?.items?.find(j => j.status === 'active' || j.status === 'emergency');
-  const pendingJob = jobs?.items?.find(j => j.status === 'pending');
   const { data: guards } = useQuery<{ items: GuardProfile[] }>({
     queryKey: ['guards'],
     queryFn: () => api('/api/guards'),
     enabled: !!activeJob?.guardId
   });
   const assignedGuard = guards?.items?.find(g => g.id === activeJob?.guardId);
-  const startMissionMutation = useMutation({
-    mutationFn: (id: string) => api(`/api/jobs/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'active' })
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      toast.success('MISSION ACTIVATED', { description: 'Personnel is now on-site and tracking is live.' });
-    }
-  });
   const panicMutation = useMutation({
     mutationFn: (id: string) => api(`/api/jobs/${id}/panic`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      toast.error('EMERGENCY SIGNAL SENT', { description: 'Tactical units dispatched.' });
-      setShowSOP(true);
+      toast.error('EMERGENCY SIGNAL SENT TO COMMAND CENTER', {
+        description: 'Elite response teams have been dispatched to your location.'
+      });
     }
   });
-  // Simulation Engine: Stabilized to prevent jumping during refetches
-  useEffect(() => {
-    if (activeJob?.id && activeJob?.status === 'active') {
-      // If the job ID changed, reset the simulation to the new starting point
-      if (lastKnownJobIdRef.current !== activeJob.id) {
-        setSimLocation(activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 });
-        lastKnownJobIdRef.current = activeJob.id;
-      }
-      const interval = setInterval(() => {
-        setSimLocation(prev => {
-          if (!prev) return activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
-          return {
-            lat: prev.lat + (Math.random() - 0.5) * 0.0003,
-            lng: prev.lng + (Math.random() - 0.5) * 0.0003,
-          };
-        });
-        if (Math.random() > 0.97) {
-          setShowDiversion(true);
-          setTimeout(() => setShowDiversion(false), 4000);
-        }
-      }, 3000);
-      return () => clearInterval(interval);
-    } else if (!activeJob) {
-      setSimLocation(null);
-      lastKnownJobIdRef.current = null;
-    }
-  }, [activeJob, activeJob?.id, activeJob?.status]); // Included activeJob to satisfy linter while maintaining ref-based stability
-  // Throttled Backend Sync
-  useEffect(() => {
-    if (!activeJob?.id || activeJob.status !== 'active' || !simLocation) return;
-    const now = Date.now();
-    if (now - lastSyncTimeRef.current > SYNC_THRESHOLD_MS) {
-      lastSyncTimeRef.current = now;
-      api(`/api/jobs/${activeJob.id}/location`, {
-        method: 'PATCH',
-        body: JSON.stringify({ lat: simLocation.lat, lng: simLocation.lng })
-      }).catch(err => console.warn('[SYNC HEARTBEAT]', err));
-    }
-  }, [simLocation, activeJob?.id, activeJob?.status]);
-  useEffect(() => {
-    if (activeJob?.status === 'emergency') setShowSOP(true);
-  }, [activeJob?.status]);
-  if (isLoading) {
-    return (
-      <AppLayout container>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="p-8 text-slate-400 animate-pulse font-mono tracking-widest uppercase text-center">
-            Establishing secure uplink...
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  if (isLoading) return <AppLayout><div className="p-8">Syncing with encrypted servers...</div></AppLayout>;
   return (
     <AppLayout container>
-      {showSOP && <SOPOverlay onAcknowledge={() => setShowSOP(false)} />}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Status Column */}
         <div className="lg:col-span-2 space-y-8">
           {activeJob ? (
             <>
               <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-white/10 p-8">
-                {showDiversion && (
-                  <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-950 py-1 text-center font-black text-[10px] uppercase tracking-[0.3em] z-10 animate-pulse">
-                    <Zap className="inline-block h-3 w-3 mr-2" /> RMP: Dynamic Route Diversion Recommended
-                  </div>
-                )}
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-white uppercase">Live Deployment</h2>
-                    <p className="text-slate-400 text-sm font-mono">
-                      ID: {activeJob.id.slice(0, 8)}
-                    </p>
+                    <h2 className="text-2xl font-black tracking-tight text-white uppercase">Mission Status</h2>
+                    <p className="text-slate-400 text-sm">Active deployment: {activeJob.id.slice(0, 8)}</p>
                   </div>
-                  <Badge
-                    className={cn(
-                      "px-4 py-1 font-black transition-colors",
-                      activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse text-white' : 'bg-amber-500 text-slate-950'
-                    )}
-                  >
+                  <Badge className={activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}>
                     {activeJob.status.toUpperCase()}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                   {[
                     { label: 'Risk Score', value: `${activeJob.riskScore}%`, color: 'text-amber-500' },
-                    { label: 'Movement', value: simLocation ? 'Detecting' : 'Stationary', color: simLocation ? 'text-emerald-500' : 'text-slate-500' },
-                    { label: 'Signal', value: 'Encrypted', color: 'text-white' },
-                    { label: 'Ops Mode', value: 'Tactical', color: 'text-orange-500' },
+                    { label: 'Distance', value: '4.2 km', color: 'text-white' },
+                    { label: 'ETA', value: '12 mins', color: 'text-white' },
+                    { label: 'Route Status', value: 'Optimal', color: 'text-emerald-500' },
                   ].map((stat, i) => (
                     <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/5">
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
@@ -151,10 +67,11 @@ export function DashboardPage() {
                   <div className="max-w-xs text-center md:text-left">
                     <h3 className="text-red-500 font-bold text-lg mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      Duress Protocol
+                      Tactical Warning
                     </h3>
                     <p className="text-slate-400 text-xs leading-relaxed">
-                      High-tier response escalation. Hold to activate silent duress signal and deployment of local tactical units.
+                      Triggering the panic button initiates immediate escalation to local law enforcement 
+                      and Sentinel Elite tactical units.
                     </p>
                   </div>
                 </div>
@@ -173,9 +90,7 @@ export function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
                           <h4 className="text-xl font-bold text-white">{assignedGuard.name}</h4>
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/20">
-                            {assignedGuard.tier.toUpperCase()}
-                          </Badge>
+                          <Badge variant="outline" className="text-amber-500 border-amber-500/20">{assignedGuard.tier.toUpperCase()}</Badge>
                         </div>
                         <p className="text-slate-400 text-sm mb-3">{assignedGuard.bio}</p>
                         <div className="flex gap-2">
@@ -192,27 +107,16 @@ export function DashboardPage() {
               </Card>
             </>
           ) : (
-            <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8 bg-slate-900/20">
+            <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8">
               <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                 <Shield className="h-10 w-10 text-slate-700" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-300 mb-2">System Ready</h2>
-              {pendingJob ? (
-                <div className="space-y-4">
-                  <p className="text-slate-500 max-w-sm">Deployment scheduled for {pendingJob.pickupLocation}. Confirm to proceed.</p>
-                  <Button
-                    onClick={() => startMissionMutation.mutate(pendingJob.id)}
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 h-12 rounded-xl"
-                  >
-                    <Play className="mr-2 h-4 w-4" /> Start Mission
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-slate-500 max-w-sm">Secure your perimeter. Book an elite escort or protection service to start your session.</p>
-              )}
+              <h2 className="text-2xl font-bold text-slate-300 mb-2">No Active Deployment</h2>
+              <p className="text-slate-500 max-w-sm">Secure your perimeter. Book an elite escort or protection service to start your session.</p>
             </div>
           )}
         </div>
+        {/* Sidebar Column */}
         <div className="space-y-8">
           <Card className="bg-slate-900 border-white/10 overflow-hidden">
             <CardHeader className="bg-white/5 border-b border-white/10">
@@ -220,28 +124,27 @@ export function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               {[
-                {
-                  time: 'Active',
-                  event: simLocation
-                    ? `Tracking at ${simLocation.lat.toFixed(4)}, ${simLocation.lng.toFixed(4)}`
-                    : activeJob?.currentLocation
-                      ? `Stored location: ${activeJob.currentLocation.lat.toFixed(4)}, ${activeJob.currentLocation.lng.toFixed(4)}`
-                      : 'System idle',
-                  icon: MapPin
-                },
-                { time: 'System', event: 'End-to-end encryption verified', icon: Shield },
-                { time: 'Status', event: activeJob ? `Mission ${activeJob.status}` : 'No active mission', icon: Clock },
+                { time: '14:20', event: 'System diagnostic passed', icon: Shield },
+                { time: '12:05', event: 'New Elite Guard available', icon: AlertTriangle },
+                { time: 'Yesterday', event: 'Mission j923 completed', icon: MapPin },
               ].map((log, i) => (
-                <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3 hover:bg-white/5 transition-colors">
+                <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3">
                   <log.icon className="h-4 w-4 text-slate-500 mt-1" />
                   <div>
                     <p className="text-sm text-slate-300 font-medium">{log.event}</p>
-                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">{log.time}</p>
+                    <p className="text-[10px] text-slate-600 font-bold">{log.time}</p>
                   </div>
                 </div>
               ))}
             </CardContent>
           </Card>
+          <div className="p-6 rounded-3xl bg-amber-500 text-slate-950">
+            <h3 className="font-black text-lg mb-2">Upgrade to Elite</h3>
+            <p className="text-sm font-medium opacity-80 mb-4 text-pretty">Get guaranteed 5-minute response times and ex-military personnel for all missions.</p>
+            <button className="w-full py-3 bg-slate-950 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors">
+              View Tier Pricing
+            </button>
+          </div>
         </div>
       </div>
     </AppLayout>
