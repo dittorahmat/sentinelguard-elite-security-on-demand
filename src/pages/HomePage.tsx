@@ -1,138 +1,92 @@
-// Home page of the app.
-// Currently a demo placeholder "please wait" screen.
-// Replace this file with your actual app UI. Do not delete it to use some other file as homepage. Simply replace the entire contents of this file.
-
-import { useEffect, useMemo, useState } from 'react'
-import { Sparkles } from 'lucide-react'
-
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { HAS_TEMPLATE_DEMO, TemplateDemo } from '@/components/TemplateDemo'
-import { Button } from '@/components/ui/button'
-import { Toaster, toast } from '@/components/ui/sonner'
-
-function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Shield, ChevronRight, Lock, Eye, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 export function HomePage() {
-  const [coins, setCoins] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [elapsedMs, setElapsedMs] = useState(0)
-
-  useEffect(() => {
-    if (!isRunning || startedAt === null) return
-
-    const t = setInterval(() => {
-      setElapsedMs(Date.now() - startedAt)
-    }, 250)
-
-    return () => clearInterval(t)
-  }, [isRunning, startedAt])
-
-  const formatted = useMemo(() => formatDuration(elapsedMs), [elapsedMs])
-
-  const onPleaseWait = () => {
-    setCoins((c) => c + 1)
-
-    if (!isRunning) {
-      // Resume from the current elapsed time
-      setStartedAt(Date.now() - elapsedMs)
-      setIsRunning(true)
-      toast.success('Building your app…', {
-        description: "Hang tight — we're setting everything up.",
-      })
-      return
-    }
-
-    setIsRunning(false)
-    toast.info('Still working…', {
-      description: 'You can come back in a moment.',
-    })
-  }
-
-  const onReset = () => {
-    setCoins(0)
-    setIsRunning(false)
-    setStartedAt(null)
-    setElapsedMs(0)
-    toast('Reset complete')
-  }
-
-  const onAddCoin = () => {
-    setCoins((c) => c + 1)
-    toast('Coin added')
-  }
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-4 overflow-hidden relative">
-      <ThemeToggle />
-      <div className="absolute inset-0 bg-gradient-rainbow opacity-10 dark:opacity-20 pointer-events-none" />
-
-      <div className="text-center space-y-8 relative z-10 animate-fade-in w-full">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-primary floating">
-            <Sparkles className="w-8 h-8 text-white rotating" />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h1 className="text-5xl md:text-7xl font-display font-bold text-balance leading-tight">
-            Creating your <span className="text-gradient">app</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto text-pretty">
-            Your application would be ready soon.
-          </p>
-        </div>
-
-        {HAS_TEMPLATE_DEMO ? (
-          <div className="max-w-5xl mx-auto text-left">
-            <TemplateDemo />
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-center gap-4">
-              <Button
-                size="lg"
-                onClick={onPleaseWait}
-                className="btn-gradient px-8 py-4 text-lg font-semibold hover:-translate-y-0.5 transition-all duration-200"
-                aria-live="polite"
-              >
-                Please Wait
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-              <div>
-                Time elapsed:{' '}
-                <span className="font-medium tabular-nums text-foreground">{formatted}</span>
-              </div>
-              <div>
-                Coins:{' '}
-                <span className="font-medium tabular-nums text-foreground">{coins}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" size="sm" onClick={onReset}>
-                Reset
-              </Button>
-              <Button variant="outline" size="sm" onClick={onAddCoin}>
-                Add Coin
-              </Button>
-            </div>
-          </>
-        )}
+    <div className="min-h-screen bg-slate-950 text-white selection:bg-amber-500 selection:text-slate-950 overflow-hidden">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-red-600/5 rounded-full blur-[150px]" />
       </div>
-
-      <footer className="absolute bottom-8 text-center text-muted-foreground/80">
-        <p>Powered by Cloudflare</p>
+      <nav className="relative z-10 flex items-center justify-between px-6 py-6 md:px-12">
+        <div className="flex items-center gap-2">
+          <Shield className="h-8 w-8 text-amber-500" />
+          <span className="text-xl font-bold tracking-tighter">SENTINEL<span className="text-amber-500">GUARD</span></span>
+        </div>
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+          <a href="#services" className="hover:text-white transition-colors">Services</a>
+          <a href="#elite" className="hover:text-white transition-colors">Elite Vetting</a>
+          <a href="#network" className="hover:text-white transition-colors">Network</a>
+        </div>
+        <Link to="/dashboard">
+          <Button variant="outline" className="border-white/10 hover:bg-white/5">Client Login</Button>
+        </Link>
+      </nav>
+      <main className="relative z-10 pt-20 pb-32 px-6 md:px-12 text-center max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="space-y-8"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-widest text-amber-500">
+            <Zap className="h-3 w-3" />
+            24/7 Priority Protection Active
+          </div>
+          <h1 className="text-6xl md:text-8xl font-display font-black tracking-tighter leading-none">
+            ELITE SECURITY <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">ON DEMAND.</span>
+          </h1>
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 leading-relaxed text-pretty">
+            Deployment of professional security assets for executive protection, 
+            high-risk escorts, and crisis mitigation. Vetted. Armed. Ready.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+            <Link to="/book">
+              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 h-14 rounded-full text-lg shadow-[0_10px_30px_rgba(245,158,11,0.3)]">
+                Request Deployment <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/personnel">
+              <Button variant="ghost" size="lg" className="text-slate-300 hover:text-white h-14 px-8 text-lg font-semibold">
+                Browse Elite Assets
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-32 text-left">
+          {[
+            { icon: Lock, title: "Proactive Risk Mitigation", desc: "Automated route diversion and safe-point mapping using real-time threat heatmaps." },
+            { icon: Eye, title: "Live Mission Tracking", desc: "End-to-end encrypted GPS tracking with immediate Command Center escalation." },
+            { icon: Shield, title: "Elite Tier Vetting", desc: "All professionals undergo rigorous background checks and tactical skill certification." },
+          ].map((feature, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 * i }}
+              className="p-8 rounded-3xl border border-white/5 bg-white/5 backdrop-blur-sm group hover:border-amber-500/50 transition-all"
+            >
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <feature.icon className="h-6 w-6 text-amber-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </main>
+      <footer className="relative z-10 border-t border-white/5 py-12 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8 bg-slate-900/50">
+        <div className="flex items-center gap-2 opacity-50">
+          <Shield className="h-5 w-5" />
+          <span className="text-sm font-bold tracking-tighter uppercase">SentinelGuard Systems</span>
+        </div>
+        <p className="text-slate-500 text-xs">© 2024 SentinelGuard. All rights reserved. Professional Grade Security.</p>
       </footer>
-
-      <Toaster richColors closeButton />
     </div>
-  )
+  );
 }
