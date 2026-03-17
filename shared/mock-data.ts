@@ -1,7 +1,7 @@
 import type { User, GuardProfile, Job, Chat, ChatMessage } from './types';
 export const MOCK_USERS: User[] = [
   { id: 'u1', name: 'Alex Sterling', role: 'client', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex' },
-  { id: 'u2', name: 'Commander Vane', role: 'admin', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin' }
+  { id: 'u2', name: 'Commander Vane', role: 'admin', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vane' }
 ];
 export const MOCK_GUARDS: GuardProfile[] = [
   {
@@ -20,7 +20,7 @@ export const MOCK_GUARDS: GuardProfile[] = [
     name: 'Sarah Jenkins',
     role: 'guard',
     tier: 'standard',
-    skills: ['Crowd Control', 'Surveillance'],
+    skills: ['Crowd Control', 'Surveillance', 'K9 Handling'],
     rating: 4.7,
     bio: 'Dedicated security professional specializing in residential and event safety.',
     experienceYears: 5,
@@ -51,6 +51,19 @@ export const MOCK_JOBS: Job[] = [
     createdAt: Date.now() - 3600000,
     updatedAt: Date.now(),
     currentLocation: { lat: 40.7128, lng: -74.0060 }
+  },
+  {
+    id: 'j2',
+    clientId: 'u1',
+    guardId: 'g2',
+    status: 'completed',
+    serviceType: 'event',
+    pickupLocation: 'Metropolitan Gala Hall',
+    destination: 'Hotel de Ville',
+    riskScore: 12,
+    createdAt: Date.now() - 86400000,
+    updatedAt: Date.now() - 82800000,
+    currentLocation: { lat: 40.7306, lng: -73.9352 }
   }
 ];
 export const MOCK_CHATS: Chat[] = [
