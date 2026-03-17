@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PanicButton } from '@/components/PanicButton';
@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [simLocation, setSimLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const lastSyncTimeRef = useRef<number>(0);
+  const SYNC_THRESHOLD_MS = 5000;
   const { data: jobs, isLoading } = useQuery<{ items: Job[] }>({
     queryKey: ['jobs'],
     queryFn: () => api('/api/jobs'),
@@ -28,9 +30,9 @@ export function DashboardPage() {
   });
   const assignedGuard = guards?.items?.find(g => g.id === activeJob?.guardId);
   const startMissionMutation = useMutation({
-    mutationFn: (id: string) => api(`/api/jobs/${id}/status`, { 
-      method: 'PATCH', 
-      body: JSON.stringify({ status: 'active' }) 
+    mutationFn: (id: string) => api(`/api/jobs/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'active' })
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
@@ -44,15 +46,16 @@ export function DashboardPage() {
       toast.error('EMERGENCY SIGNAL SENT', { description: 'Tactical units dispatched.' });
     }
   });
-  // Simulation Engine
+  // Simulation Engine: Updates local state every 3 seconds
   useEffect(() => {
-    if (activeJob && activeJob.status === 'active') {
+    if (activeJob?.id && activeJob?.status === 'active') {
+      const initialLocation = activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
       const interval = setInterval(() => {
         setSimLocation(prev => {
-          const base = prev || activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
+          const base = prev || initialLocation;
           return {
-            lat: base.lat + (Math.random() - 0.5) * 0.001,
-            lng: base.lng + (Math.random() - 0.5) * 0.001,
+            lat: base.lat + (Math.random() - 0.5) * 0.0005,
+            lng: base.lng + (Math.random() - 0.5) * 0.0005,
           };
         });
       }, 3000);
@@ -61,7 +64,32 @@ export function DashboardPage() {
       setSimLocation(null);
     }
   }, [activeJob?.id, activeJob?.status]);
-  if (isLoading) return <AppLayout><div className="p-8 text-slate-400 animate-pulse">Establishing secure uplink...</div></AppLayout>;
+  // Throttled Backend Sync: Syncs simulated location to worker at low frequency
+  useEffect(() => {
+    if (!activeJob?.id || activeJob.status !== 'active' || !simLocation) return;
+    const now = Date.now();
+    if (now - lastSyncTimeRef.current > SYNC_THRESHOLD_MS) {
+      lastSyncTimeRef.current = now;
+      // Fire and forget sync to avoid blocking UI or causing refetch loops
+      api(`/api/jobs/${activeJob.id}/location`, {
+        method: 'PATCH',
+        body: JSON.stringify({ lat: simLocation.lat, lng: simLocation.lng })
+      }).catch(err => {
+        console.warn('Location sync failed:', err);
+      });
+    }
+  }, [simLocation, activeJob?.id, activeJob?.status]);
+  if (isLoading) {
+    return (
+      <AppLayout container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="p-8 text-slate-400 animate-pulse font-mono tracking-widest uppercase">
+            Establishing secure uplink...
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   return (
     <AppLayout container>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -72,15 +100,22 @@ export function DashboardPage() {
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="text-2xl font-black tracking-tight text-white uppercase">Live Deployment</h2>
-                    <p className="text-slate-400 text-sm font-mono">ID: {activeJob.id.slice(0, 8)}</p>
+                    <p className="text-slate-400 text-sm font-mono">
+                      ID: {activeJob?.id ? activeJob.id.slice(0, 8) : '--------'}
+                    </p>
                   </div>
-                  <Badge className={activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}>
+                  <Badge 
+                    className={cn(
+                      "px-4 py-1 font-black transition-colors",
+                      activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse text-white' : 'bg-amber-500 text-slate-950'
+                    )}
+                  >
                     {activeJob.status.toUpperCase()}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                   {[
-                    { label: 'Risk Score', value: `${activeJob.riskScore}%`, color: 'text-amber-500' },
+                    { label: 'Risk Score', value: `${activeJob.riskScore ?? 0}%`, color: 'text-amber-500' },
                     { label: 'Movement', value: simLocation ? 'Detecting' : 'Stationary', color: simLocation ? 'text-emerald-500' : 'text-slate-500' },
                     { label: 'Signal', value: 'Encrypted', color: 'text-white' },
                     { label: 'Ops Mode', value: 'Tactical', color: 'text-orange-500' },
@@ -113,16 +148,18 @@ export function DashboardPage() {
                     <div className="flex items-center gap-6">
                       <Avatar className="h-20 w-20 border-2 border-amber-500/20">
                         <AvatarImage src={assignedGuard.avatarUrl} />
-                        <AvatarFallback>{assignedGuard.name[0]}</AvatarFallback>
+                        <AvatarFallback>{assignedGuard.name?.[0] ?? '?'}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
                           <h4 className="text-xl font-bold text-white">{assignedGuard.name}</h4>
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/20">{assignedGuard.tier.toUpperCase()}</Badge>
+                          <Badge variant="outline" className="text-amber-500 border-amber-500/20">
+                            {assignedGuard.tier?.toUpperCase() ?? 'STANDARD'}
+                          </Badge>
                         </div>
                         <p className="text-slate-400 text-sm mb-3">{assignedGuard.bio}</p>
                         <div className="flex gap-2">
-                          {assignedGuard.skills.map(s => (
+                          {assignedGuard.skills?.map(s => (
                             <Badge key={s} className="bg-white/5 text-slate-400 text-[10px] uppercase">{s}</Badge>
                           ))}
                         </div>
@@ -135,7 +172,7 @@ export function DashboardPage() {
               </Card>
             </>
           ) : (
-            <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8">
+            <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8 bg-slate-900/20">
               <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                 <Shield className="h-10 w-10 text-slate-700" />
               </div>
@@ -143,9 +180,9 @@ export function DashboardPage() {
               {pendingJob ? (
                 <div className="space-y-4">
                   <p className="text-slate-500 max-w-sm">Deployment scheduled for {pendingJob.pickupLocation}. Confirm to proceed.</p>
-                  <Button 
+                  <Button
                     onClick={() => startMissionMutation.mutate(pendingJob.id)}
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold"
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 h-12 rounded-xl"
                   >
                     <Play className="mr-2 h-4 w-4" /> Start Mission
                   </Button>
@@ -163,11 +200,19 @@ export function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               {[
-                { time: 'Active', event: simLocation ? `Tracking at ${simLocation.lat.toFixed(4)}, ${simLocation.lng.toFixed(4)}` : 'System idle', icon: MapPin },
+                { 
+                  time: 'Active', 
+                  event: simLocation 
+                    ? `Tracking at ${simLocation.lat.toFixed(4)}, ${simLocation.lng.toFixed(4)}` 
+                    : activeJob?.currentLocation 
+                      ? `Stored location: ${activeJob.currentLocation.lat.toFixed(4)}, ${activeJob.currentLocation.lng.toFixed(4)}`
+                      : 'System idle', 
+                  icon: MapPin 
+                },
                 { time: 'System', event: 'End-to-end encryption verified', icon: Shield },
                 { time: 'Status', event: activeJob ? `Mission ${activeJob.status}` : 'No active mission', icon: Clock },
               ].map((log, i) => (
-                <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3">
+                <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3 hover:bg-white/5 transition-colors">
                   <log.icon className="h-4 w-4 text-slate-500 mt-1" />
                   <div>
                     <p className="text-sm text-slate-300 font-medium">{log.event}</p>
