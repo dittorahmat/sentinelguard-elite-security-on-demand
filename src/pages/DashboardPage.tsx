@@ -77,7 +77,7 @@ export function DashboardPage() {
       setSimLocation(null);
       lastKnownJobIdRef.current = null;
     }
-  }, [activeJob?.id, activeJob?.status]); // Removed activeJob.currentLocation to prevent reset loops
+  }, [activeJob, activeJob?.id, activeJob?.status]); // Included activeJob to satisfy linter while maintaining ref-based stability
   // Throttled Backend Sync
   useEffect(() => {
     if (!activeJob?.id || activeJob.status !== 'active' || !simLocation) return;
