@@ -10,6 +10,7 @@ interface GuardDetailModalProps {
   guard: GuardProfile | null;
   isOpen: boolean;
   onClose: () => void;
+  onAssign?: (id: string) => void;
 }
 const MOCK_PERFORMANCE = [
   { metric: 'Tactical', value: 98 },
@@ -17,7 +18,7 @@ const MOCK_PERFORMANCE = [
   { metric: 'Driving', value: 92 },
   { metric: 'Escort', value: 95 },
 ];
-export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalProps) {
+export function GuardDetailModal({ guard, isOpen, onClose, onAssign }: GuardDetailModalProps) {
   if (!guard) return null;
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -40,7 +41,7 @@ export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalPro
           <div className="flex justify-between items-start">
             <div>
               <DialogTitle className="text-3xl font-black tracking-tight">{guard.name}</DialogTitle>
-              <DialogDescription className="text-slate-400 mt-1 flex items-center gap-2">
+              <DialogDescription className="text-slate-400 mt-1 flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest">
                 <Target className="h-4 w-4 text-amber-500" />
                 Security Specialist • {guard.experienceYears} Years Active Duty
               </DialogDescription>
@@ -50,7 +51,7 @@ export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalPro
                 <Star className="h-5 w-5 fill-current" />
                 <span className="text-xl font-bold">{guard.rating}</span>
               </div>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Efficiency Rating</p>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Efficiency Rating</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -76,7 +77,7 @@ export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalPro
                 </div>
               </div>
             </div>
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+            <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
               <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                 <Shield className="h-3 w-3" /> Performance Metrics
               </h4>
@@ -84,17 +85,17 @@ export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalPro
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={MOCK_PERFORMANCE} layout="vertical">
                     <XAxis type="number" hide domain={[0, 100]} />
-                    <YAxis 
-                      dataKey="metric" 
-                      type="category" 
-                      width={60} 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                    <YAxis
+                      dataKey="metric"
+                      type="category"
+                      width={60}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'black' }}
                     />
-                    <Tooltip 
+                    <Tooltip
                       cursor={{ fill: 'transparent' }}
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px' }}
                     />
                     <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={12} />
                   </BarChart>
@@ -103,10 +104,13 @@ export function GuardDetailModal({ guard, isOpen, onClose }: GuardDetailModalPro
             </div>
           </div>
           <div className="flex gap-4 pt-4 border-t border-white/10">
-            <Button variant="outline" className="flex-1 border-white/10 text-white" onClick={onClose}>
+            <Button variant="outline" className="flex-1 border-white/10 text-white rounded-xl" onClick={onClose}>
               Dismiss
             </Button>
-            <Button className="flex-[2] bg-amber-500 hover:bg-amber-600 text-slate-950 font-black h-12 rounded-xl">
+            <Button 
+              onClick={() => onAssign?.(guard.id)}
+              className="flex-[2] bg-amber-500 hover:bg-amber-600 text-slate-950 font-black h-12 rounded-xl"
+            >
               Assign to Mission
             </Button>
           </div>

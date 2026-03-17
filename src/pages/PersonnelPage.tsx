@@ -9,12 +9,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Star, Shield, Award, MapPin } from 'lucide-react';
 import { GuardDetailModal } from '@/components/GuardDetailModal';
+import { useNavigate } from 'react-router-dom';
 export function PersonnelPage() {
+  const navigate = useNavigate();
   const [selectedGuard, setSelectedGuard] = useState<GuardProfile | null>(null);
   const { data: guards, isLoading } = useQuery<{ items: GuardProfile[] }>({
     queryKey: ['guards'],
     queryFn: () => api('/api/guards')
   });
+  const handleAssign = (guardId: string) => {
+    navigate(`/book?guardId=${guardId}`);
+  };
+
   return (
     <AppLayout container>
       <div className="space-y-10">
@@ -96,9 +102,10 @@ export function PersonnelPage() {
         </div>
       </div>
       <GuardDetailModal 
-        guard={selectedGuard} 
-        isOpen={!!selectedGuard} 
-        onClose={() => setSelectedGuard(null)} 
+        guard={selectedGuard}
+        isOpen={!!selectedGuard}
+        onClose={() => setSelectedGuard(null)}
+        onAssign={handleAssign}
       />
     </AppLayout>
   );
