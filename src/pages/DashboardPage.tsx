@@ -50,18 +50,18 @@ export function DashboardPage() {
       setShowSOP(true);
     }
   });
-  // Simulation Engine
+  // Simulation Engine: Fixed dependencies and initialization logic
   useEffect(() => {
     if (activeJob?.id && activeJob?.status === 'active') {
       const interval = setInterval(() => {
         setSimLocation(prev => {
+          // Use current simulation state or fall back to the job's starting location
           const base = prev || activeJob.currentLocation || { lat: 40.7128, lng: -74.0060 };
           return {
             lat: base.lat + (Math.random() - 0.5) * 0.0005,
             lng: base.lng + (Math.random() - 0.5) * 0.0005,
           };
         });
-        // Occasional route diversion simulation
         if (Math.random() > 0.95) {
           setShowDiversion(true);
           setTimeout(() => setShowDiversion(false), 5000);
@@ -71,8 +71,8 @@ export function DashboardPage() {
     } else {
       setSimLocation(null);
     }
-  }, [activeJob?.id, activeJob?.status]);
-  // Throttled Backend Sync
+  }, [activeJob?.id, activeJob?.status, activeJob?.currentLocation]);
+  // Throttled Backend Sync: Fixed dependencies
   useEffect(() => {
     if (!activeJob?.id || activeJob.status !== 'active' || !simLocation) return;
     const now = Date.now();
@@ -81,9 +81,9 @@ export function DashboardPage() {
       api(`/api/jobs/${activeJob.id}/location`, {
         method: 'PATCH',
         body: JSON.stringify({ lat: simLocation.lat, lng: simLocation.lng })
-      }).catch(console.warn);
+      }).catch(err => console.error('[SYNC ERROR]', err));
     }
-  }, [simLocation, activeJob?.id, activeJob?.status]);
+  }, [simLocation, activeJob?.id, activeJob?.status, SYNC_THRESHOLD_MS]);
   useEffect(() => {
     if (activeJob?.status === 'emergency') setShowSOP(true);
   }, [activeJob?.status]);
@@ -91,7 +91,7 @@ export function DashboardPage() {
     return (
       <AppLayout container>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="p-8 text-slate-400 animate-pulse font-mono tracking-widest uppercase">
+          <div className="p-8 text-slate-400 animate-pulse font-mono tracking-widest uppercase text-center">
             Establishing secure uplink...
           </div>
         </div>
@@ -99,143 +99,147 @@ export function DashboardPage() {
     );
   }
   return (
-    <AppLayout container>
-      {showSOP && <SOPOverlay onAcknowledge={() => setShowSOP(false)} />}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {activeJob ? (
-            <>
-              <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-white/10 p-8">
-                {showDiversion && (
-                  <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-950 py-1 text-center font-black text-[10px] uppercase tracking-[0.3em] z-10 animate-pulse">
-                    <Zap className="inline-block h-3 w-3 mr-2" /> RMP: Dynamic Route Diversion Recommended
-                  </div>
-                )}
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tight text-white uppercase">Live Deployment</h2>
-                    <p className="text-slate-400 text-sm font-mono">
-                      ID: {activeJob?.id ? activeJob.id.slice(0, 8) : '--------'}
-                    </p>
-                  </div>
-                  <Badge 
-                    className={cn(
-                      "px-4 py-1 font-black transition-colors",
-                      activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse text-white' : 'bg-amber-500 text-slate-950'
+    <AppLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8 md:py-10 lg:py-12">
+          {showSOP && <SOPOverlay onAcknowledge={() => setShowSOP(false)} />}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
+              {activeJob ? (
+                <>
+                  <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-white/10 p-8">
+                    {showDiversion && (
+                      <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-950 py-1 text-center font-black text-[10px] uppercase tracking-[0.3em] z-10 animate-pulse">
+                        <Zap className="inline-block h-3 w-3 mr-2" /> RMP: Dynamic Route Diversion Recommended
+                      </div>
                     )}
-                  >
-                    {activeJob.status.toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {[
-                    { label: 'Risk Score', value: `${activeJob.riskScore ?? 0}%`, color: 'text-amber-500' },
-                    { label: 'Movement', value: simLocation ? 'Detecting' : 'Stationary', color: simLocation ? 'text-emerald-500' : 'text-slate-500' },
-                    { label: 'Signal', value: 'Encrypted', color: 'text-white' },
-                    { label: 'Ops Mode', value: 'Tactical', color: 'text-orange-500' },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
-                      <p className={cn("text-lg font-black", stat.color)}>{stat.value}</p>
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h2 className="text-2xl font-black tracking-tight text-white uppercase">Live Deployment</h2>
+                        <p className="text-slate-400 text-sm font-mono">
+                          ID: {activeJob?.id ? activeJob.id.slice(0, 8) : '--------'}
+                        </p>
+                      </div>
+                      <Badge
+                        className={cn(
+                          "px-4 py-1 font-black transition-colors",
+                          activeJob.status === 'emergency' ? 'bg-red-500 animate-pulse text-white' : 'bg-amber-500 text-slate-950'
+                        )}
+                      >
+                        {activeJob.status.toUpperCase()}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-                <div className="flex flex-col md:flex-row gap-8 items-center justify-center p-8 bg-black/40 rounded-3xl border border-red-500/20">
-                  <PanicButton onTrigger={() => panicMutation.mutate(activeJob.id)} />
-                  <div className="max-w-xs text-center md:text-left">
-                    <h3 className="text-red-500 font-bold text-lg mb-2 flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5" />
-                      Duress Protocol
-                    </h3>
-                    <p className="text-slate-400 text-xs leading-relaxed">
-                      High-tier response escalation. Hold to activate silent duress signal and deployment of local tactical units.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <Card className="bg-slate-900 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-400">Assigned Professional</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {assignedGuard ? (
-                    <div className="flex items-center gap-6">
-                      <Avatar className="h-20 w-20 border-2 border-amber-500/20">
-                        <AvatarImage src={assignedGuard.avatarUrl} />
-                        <AvatarFallback>{assignedGuard.name?.[0] ?? '?'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h4 className="text-xl font-bold text-white">{assignedGuard.name}</h4>
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/20">
-                            {assignedGuard.tier?.toUpperCase() ?? 'STANDARD'}
-                          </Badge>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                      {[
+                        { label: 'Risk Score', value: `${activeJob.riskScore ?? 0}%`, color: 'text-amber-500' },
+                        { label: 'Movement', value: simLocation ? 'Detecting' : 'Stationary', color: simLocation ? 'text-emerald-500' : 'text-slate-500' },
+                        { label: 'Signal', value: 'Encrypted', color: 'text-white' },
+                        { label: 'Ops Mode', value: 'Tactical', color: 'text-orange-500' },
+                      ].map((stat, i) => (
+                        <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
+                          <p className={cn("text-lg font-black", stat.color)}>{stat.value}</p>
                         </div>
-                        <p className="text-slate-400 text-sm mb-3">{assignedGuard.bio}</p>
-                        <div className="flex gap-2">
-                          {assignedGuard.skills?.map(s => (
-                            <Badge key={s} className="bg-white/5 text-slate-400 text-[10px] uppercase">{s}</Badge>
-                          ))}
-                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-8 items-center justify-center p-8 bg-black/40 rounded-3xl border border-red-500/20">
+                      <PanicButton onTrigger={() => panicMutation.mutate(activeJob.id)} />
+                      <div className="max-w-xs text-center md:text-left">
+                        <h3 className="text-red-500 font-bold text-lg mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5" />
+                          Duress Protocol
+                        </h3>
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                          High-tier response escalation. Hold to activate silent duress signal and deployment of local tactical units.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-slate-500 italic py-4">Locating nearest available asset...</div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8 bg-slate-900/20">
-              <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                <Shield className="h-10 w-10 text-slate-700" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-300 mb-2">System Ready</h2>
-              {pendingJob ? (
-                <div className="space-y-4">
-                  <p className="text-slate-500 max-w-sm">Deployment scheduled for {pendingJob.pickupLocation}. Confirm to proceed.</p>
-                  <Button
-                    onClick={() => startMissionMutation.mutate(pendingJob.id)}
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 h-12 rounded-xl"
-                  >
-                    <Play className="mr-2 h-4 w-4" /> Start Mission
-                  </Button>
-                </div>
+                  </div>
+                  <Card className="bg-slate-900 border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-400">Assigned Professional</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {assignedGuard ? (
+                        <div className="flex items-center gap-6">
+                          <Avatar className="h-20 w-20 border-2 border-amber-500/20">
+                            <AvatarImage src={assignedGuard.avatarUrl} />
+                            <AvatarFallback>{assignedGuard.name?.[0] ?? '?'}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h4 className="text-xl font-bold text-white">{assignedGuard.name}</h4>
+                              <Badge variant="outline" className="text-amber-500 border-amber-500/20">
+                                {assignedGuard.tier?.toUpperCase() ?? 'STANDARD'}
+                              </Badge>
+                            </div>
+                            <p className="text-slate-400 text-sm mb-3">{assignedGuard.bio}</p>
+                            <div className="flex gap-2">
+                              {assignedGuard.skills?.map(s => (
+                                <Badge key={s} className="bg-white/5 text-slate-400 text-[10px] uppercase">{s}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-slate-500 italic py-4">Locating nearest available asset...</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
               ) : (
-                <p className="text-slate-500 max-w-sm">Secure your perimeter. Book an elite escort or protection service to start your session.</p>
+                <div className="h-96 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center p-8 bg-slate-900/20">
+                  <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                    <Shield className="h-10 w-10 text-slate-700" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-300 mb-2">System Ready</h2>
+                  {pendingJob ? (
+                    <div className="space-y-4">
+                      <p className="text-slate-500 max-w-sm">Deployment scheduled for {pendingJob.pickupLocation}. Confirm to proceed.</p>
+                      <Button
+                        onClick={() => startMissionMutation.mutate(pendingJob.id)}
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 h-12 rounded-xl"
+                      >
+                        <Play className="mr-2 h-4 w-4" /> Start Mission
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 max-w-sm">Secure your perimeter. Book an elite escort or protection service to start your session.</p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-        <div className="space-y-8">
-          <Card className="bg-slate-900 border-white/10 overflow-hidden">
-            <CardHeader className="bg-white/5 border-b border-white/10">
-              <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Security Feed</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {[
-                { 
-                  time: 'Active', 
-                  event: simLocation 
-                    ? `Tracking at ${simLocation.lat.toFixed(4)}, ${simLocation.lng.toFixed(4)}` 
-                    : activeJob?.currentLocation 
-                      ? `Stored location: ${activeJob.currentLocation.lat.toFixed(4)}, ${activeJob.currentLocation.lng.toFixed(4)}`
-                      : 'System idle', 
-                  icon: MapPin 
-                },
-                { time: 'System', event: 'End-to-end encryption verified', icon: Shield },
-                { time: 'Status', event: activeJob ? `Mission ${activeJob.status}` : 'No active mission', icon: Clock },
-              ].map((log, i) => (
-                <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3 hover:bg-white/5 transition-colors">
-                  <log.icon className="h-4 w-4 text-slate-500 mt-1" />
-                  <div>
-                    <p className="text-sm text-slate-300 font-medium">{log.event}</p>
-                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">{log.time}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+            <div className="space-y-8">
+              <Card className="bg-slate-900 border-white/10 overflow-hidden">
+                <CardHeader className="bg-white/5 border-b border-white/10">
+                  <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Security Feed</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {[
+                    {
+                      time: 'Active',
+                      event: simLocation
+                        ? `Tracking at ${simLocation.lat.toFixed(4)}, ${simLocation.lng.toFixed(4)}`
+                        : activeJob?.currentLocation
+                          ? `Stored location: ${activeJob.currentLocation.lat.toFixed(4)}, ${activeJob.currentLocation.lng.toFixed(4)}`
+                          : 'System idle',
+                      icon: MapPin
+                    },
+                    { time: 'System', event: 'End-to-end encryption verified', icon: Shield },
+                    { time: 'Status', event: activeJob ? `Mission ${activeJob.status}` : 'No active mission', icon: Clock },
+                  ].map((log, i) => (
+                    <div key={i} className="p-4 border-b border-white/5 last:border-0 flex gap-3 hover:bg-white/5 transition-colors">
+                      <log.icon className="h-4 w-4 text-slate-500 mt-1" />
+                      <div>
+                        <p className="text-sm text-slate-300 font-medium">{log.event}</p>
+                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">{log.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>

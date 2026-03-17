@@ -12,6 +12,7 @@ export function RiskHeatmap() {
   const [points, setPoints] = useState<Point[]>([]);
   const [isDiversion, setIsDiversion] = useState(false);
   useEffect(() => {
+    // Generate static points once on mount
     const generated: Point[] = Array.from({ length: 15 }).map((_, i) => ({
       id: `p-${i}`,
       x: Math.random() * 100,
@@ -22,6 +23,7 @@ export function RiskHeatmap() {
     generated.push({ id: 'hub-1', x: 20, y: 30, level: 'hub' });
     generated.push({ id: 'hub-2', x: 80, y: 70, level: 'hub' });
     setPoints(generated);
+    // Diversion simulation interval
     const interval = setInterval(() => {
       setIsDiversion(prev => !prev);
     }, 5000);
@@ -29,10 +31,8 @@ export function RiskHeatmap() {
   }, []);
   return (
     <div className="relative aspect-square w-full max-w-md mx-auto rounded-3xl border border-white/10 bg-slate-900 overflow-hidden shadow-2xl">
-      {/* Grid Pattern */}
       <div className="absolute inset-0 opacity-20"
            style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-      {/* Simulated Route Line */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
         <motion.path
           d="M 20 180 Q 200 100 380 320"
@@ -45,18 +45,15 @@ export function RiskHeatmap() {
           transition={{ duration: 3, repeat: Infinity }}
         />
       </svg>
-      {/* Sweep Animation */}
       <motion.div
         className="absolute top-1/2 left-1/2 w-full h-[2px] bg-amber-500/20 origin-left"
         style={{ transformOrigin: '0% 50%' }}
         animate={{ rotate: 360 }}
         transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
       />
-      {/* Center Marker */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
         <div className="h-4 w-4 rounded-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)] animate-pulse" />
       </div>
-      {/* Threat Points & Hubs */}
       <AnimatePresence>
         {points.map((p) => (
           <motion.div
@@ -82,7 +79,6 @@ export function RiskHeatmap() {
           </motion.div>
         ))}
       </AnimatePresence>
-      {/* Overlay UI */}
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-none">
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest">
@@ -94,12 +90,12 @@ export function RiskHeatmap() {
             Sentinel Hubs
           </div>
         </div>
-        <motion.div 
+        <motion.div
           animate={{ scale: isDiversion ? 1.05 : 1 }}
           className={cn(
             "text-[9px] font-black px-2 py-0.5 rounded border flex items-center gap-1.5 transition-colors",
-            isDiversion 
-              ? "text-red-500 bg-red-500/10 border-red-500/30" 
+            isDiversion
+              ? "text-red-500 bg-red-500/10 border-red-500/30"
               : "text-amber-500 bg-amber-500/10 border-amber-500/20"
           )}
         >
